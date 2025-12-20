@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Sistema Integral</title>
+<style>
+body{
+    font-family:Arial, sans-serif;
+    background:#e9ecef;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+}
+.box{
+    background:#fff;
+    padding:20px;
+    width:480px;
+    border-radius:8px;
+    box-shadow:0 0 10px rgba(0,0,0,.2);
+}
+input, select{
+    width:100%;
+    padding:6px;
+    margin:4px 0;
+}
+button{
+    padding:6px;
+    background:#007bff;
+    color:#fff;
+    border:none;
+    cursor:pointer;
+}
+button:hover{background:#0056b3}
+.hidden{display:none}
+.admin{color:green;font-weight:bold}
+table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:12px;
+}
+td,th{
+    border:1px solid #ccc;
+    padding:4px;
+    text-align:center;
+}
+.error{color:red;text-align:center}
+h4{margin-top:10px}
+</style>
+</head>
+<body>
+
+<div class="box" id="loginBox">
+    <h2>Iniciar sesión</h2>
+    <input id="user" placeholder="Usuario / Dominio">
+    <input id="pass" type="password" placeholder="Contraseña">
+    <button onclick="login()" style="width:100%">Ingresar</button>
+    <p class="error" id="error"></p>
+</div>
+
+<div class="box hidden" id="panel">
+    <h3 id="bienvenida"></h3>
+
+    <!-- PANEL USUARIO -->
+    <div id="userPanel" class="hidden">
+        <h4>🚗 Cargar Kilometraje</h4>
+        <input id="kmInput" type="number" placeholder="Kilometraje actual">
+        <button onclick="saveKm()" style="width:100%">Guardar KM</button>
+
+        <h4>📜 Historial</h4>
+        <table>
+            <thead>
+                <tr>
+                    <th>Kilometraje</th>
+                    <th>Fecha</th>
+                </tr>
+            </thead>
+            <tbody id="userKmTable"></tbody>
+        </table>
+    </div>
+
+    <!-- PANEL ADMIN -->
+    <div id="adminPanel" class="hidden">
+
+        <h4 class="admin">➕ Alta de usuario</h4>
+        <input id="newUser" placeholder="Usuario / Dominio">
+        <input id="newPass" placeholder="Contraseña">
+        <select id="newRole">
+            <option>USUARIO</option>
+            <option>ADMIN</option>
+        </select>
+        <button onclick="addUser()" style="width:100%">Agregar usuario</button>
+
+        <h4 class="admin">👥 Gestión de usuarios</h4>
+        <table>
+            <thead>
+                <tr>
+                    <th>Usuario</th>
+                    <th>Clave</th>
+                    <th>Rol</th>
+                    <th>💾</th>
+                    <th>🗑</th>
+                </tr>
+            </thead>
+            <tbody id="userTable"></tbody>
+        </table>
+
+        <h4 class="admin">🧾 Registro de accesos</h4>
+        <table>
+            <thead>
+                <tr>
+                    <th>Usuario</th>
+                    <th>Fecha</th>
+                </tr>
+            </thead>
+            <tbody id="logTable"></tbody>
+        </table>
+
+        <h4 class="admin">📊 Kilometrajes por dominio</h4>
+        <table>
+            <thead>
+                <tr>
+                    <th>Dominio</th>
+                    <th>Kilometraje</th>
+                    <th>Fecha</th>
+                </tr>
+            </thead>
+            <tbody id="adminKmTable"></tbody>
+        </table>
+
+    </div>
+
+    <button onclick="logout()" style="width:100%;margin-top:10px">Cerrar sesión</button>
+</div>
+
+<script>
+let users = JSON.parse(localStorage.getItem("users")) || {
+    admin:{password:"1234",role:"ADMIN"},
+    A170TCP:{password:"1234",role:"USUARIO"},
+    A171CKS:{password:"1234",role:"USUARIO"},
+    A217CTN:{password:"1234",role:"USUARIO"}
+};
+
+let kms = JSON.parse(localStorage.getItem("kms")) || [];
+let logs = JSON.parse(localStorage.getItem("logs")) || [];
+let currentUser=null;
+
+function saveAll(){
+    localStorage.setItem("users",JSON.stringify(users));
+    localStorage.setItem("kms",JSON.stringify(kms));
+    localStorage.setItem("logs",JSON.stringify(logs));
+}
+
+function login(){
+    if(users[user.value] && users[user.value].password===pass.value){
+        currentUser=user.value;
+        loginBox.classList.add("hidden");
+        panel.classList.remove("hidden");
+
+        bienvenida.innerHTML=`Usuario: <b>${currentUser}</b><br>
+        Rol: <span class="${users[currentUser].role==='ADMIN'?'admin':''}">
+        ${users[currentUser].role}</span>`;
+
+        logs.unshift({user:currentUser,date:new Date().toLocaleString()});
+        saveAll();
+
+        if(users[currentUser].role==="ADMIN"){
+            adminPanel.classList.remove("hidden");
+            loadUsers();
+            loadLogs();
+            loadAdminKm();
+        }else{
+            userPanel.classList.remove("hidden");
+            loadUserKm();
+        }
+    }else{
+        error.innerText="Usuario o contraseña incorrectos";
+    }
+}
+
+function addUser(){
+    if(!newUser.value||!newPass.value) return alert("Complete los datos");
+    if(users[newUser.value]) return alert("El usuario ya existe");
+
+    users[newUser.value]={password:newPass.value,role:newRole.value};
+    saveAll();
+    loadUsers();
+    newUser.value=""; newPass.value="";
+}
+
+function loadUsers(){
+    userTable.innerHTML="";
+    for(let u in users){
+        if(u==="admin") continue;
+        userTable.innerHTML+=`
+        <tr>
+            <td>${u}</td>
+            <td><input value="${users[u].password}" id="p_${u}"></td>
+            <td>
+                <select id="r_${u}">
+                    <option ${users[u].role==="USUARIO"?"selected":""}>USUARIO</option>
+                    <option ${users[u].role==="ADMIN"?"selected":""}>ADMIN</option>
+                </select>
+            </td>
+            <td><button onclick="updateUser('${u}')">💾</button></td>
+            <td><button onclick="deleteUser('${u}')">🗑</button></td>
+        </tr>`;
+    }
+}
+
+function updateUser(u){
+    users[u].password=document.getElementById("p_"+u).value;
+    users[u].role=document.getElementById("r_"+u).value;
+    saveAll();
+    alert("Usuario actualizado");
+}
+
+function deleteUser(u){
+    if(confirm("¿Eliminar usuario "+u+"?")){
+        delete users[u];
+        saveAll();
+        loadUsers();
+    }
+}
+
+function saveKm(){
+    if(!kmInput.value) return alert("Ingrese kilometraje");
+    kms.unshift({dominio:currentUser,km:kmInput.value,fecha:new Date().toLocaleString()});
+    saveAll();
+    kmInput.value="";
+    loadUserKm();
+}
+
+function loadUserKm(){
+    userKmTable.innerHTML="";
+    kms.filter(k=>k.dominio===currentUser).forEach(k=>{
+        userKmTable.innerHTML+=`<tr><td>${k.km}</td><td>${k.fecha}</td></tr>`;
+    });
+}
+
+function loadAdminKm(){
+    adminKmTable.innerHTML="";
+    kms.forEach(k=>{
+        adminKmTable.innerHTML+=`<tr><td>${k.dominio}</td><td>${k.km}</td><td>${k.fecha}</td></tr>`;
+    });
+}
+
+function loadLogs(){
+    logTable.innerHTML="";
+    logs.slice(0,10).forEach(l=>{
+        logTable.innerHTML+=`<tr><td>${l.user}</td><td>${l.date}</td></tr>`;
+    });
+}
+
+function logout(){
+    panel.classList.add("hidden");
+    adminPanel.classList.add("hidden");
+    userPanel.classList.add("hidden");
+    loginBox.classList.remove("hidden");
+    user.value=""; pass.value="";
+    currentUser=null;
+}
+</script>
+
+</body>
+</html>
