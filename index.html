@@ -62,7 +62,7 @@
     .menu{display:flex;gap:8px;margin:10px 0;border-bottom:1px solid var(--line);padding-bottom:10px;flex-wrap:wrap}
     .menu button{background:#f8f9fa;border:1px solid var(--line);color:#111}
     .menu button:hover{background:#e9ecef}
-    .menu.user button{color:#000 !important;font-weight:800}
+    .menu.user button{color:#000 !important;font-weight:800} /* menu negro pedido */
 
     .cardline{border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:10px;background:#fafafa}
     .chip{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--line);font-size:12px;background:#fff}
@@ -103,6 +103,15 @@
     .kpi .pill{background:#fff}
     .copyRow{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
     .copyRow input{flex:1; min-width:220px}
+
+    /* SOS */
+    .sos-float{
+      position:fixed; right:18px; bottom:18px; z-index:9998;
+      background:#dc3545; color:#fff; border-radius:999px; padding:14px 18px;
+      font-weight:800; box-shadow:0 10px 20px rgba(0,0,0,.35); border:0;
+    }
+    .sos-float:hover{ background:#b02a37 }
+    .sos-modal{ width:420px; max-width:96vw }
   </style>
 </head>
 
@@ -468,11 +477,10 @@
         <tbody id="logTable"></tbody>
       </table>
     </div>
-
   </div>
 </div>
 
-<!-- MODAL INFORMAR PAGO -->
+<!-- MODAL INFORMAR PAGO (NO SE ABRE SOLO: display:none por CSS) -->
 <div id="payModalOverlay" class="modalOverlay" role="dialog" aria-modal="true">
   <div class="modal">
     <div class="modalHead">
@@ -526,6 +534,23 @@
   </div>
 </div>
 
+<!-- SOS FLOAT + MODAL -->
+<button class="sos-float hidden" id="sosBtn" onclick="openSOS()">S.O.S</button>
+
+<div class="modalOverlay" id="sosOverlay" role="dialog" aria-modal="true">
+  <div class="modal sos-modal">
+    <div class="modalHead">
+      <b>S.O.S</b>
+      <button class="btn-secondary" onclick="closeSOS()">Cerrar</button>
+    </div>
+    <div class="cardline">
+      <button class="btn-danger" style="width:100%;margin-bottom:8px" onclick="callRecupero()">📞 Llamar Recupero</button>
+      <button class="btn-ok" style="width:100%;margin-bottom:8px" onclick="waProp1()">💬 WhatsApp Propietario</button>
+      <button class="btn-secondary" style="width:100%" onclick="waProp2()">💬 WhatsApp Propietario</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ========= CONFIG ========= */
 const LOGO_URL = "https://drive.google.com/uc?export=view&id=19j4ofQV4ONnwBDKXss16-L2F2rh5DK32";
@@ -538,7 +563,6 @@ const RENT_DUE_OFFSET_DAYS = 7;
 
 // PUNITORIOS: 10% DIARIO
 const PENALTY_RATE_DAILY = 0.10;
-const PENALTY_PERIOD_DAYS = 1;
 
 /* ========= STORAGE ========= */
 const KEYS = {
@@ -840,6 +864,13 @@ function login(){
   document.getElementById("panelTitle").innerHTML = users[u].role==="ADMIN" ? "<b>Administrador</b>" : "<b>Vehículo</b>";
   document.getElementById("panelSubtitle").textContent = users[u].role==="ADMIN" ? "" : `Usuario: ${u}`;
 
+  // SOS visible solo usuario (no admin)
+  if(users[u].role === "ADMIN"){
+    document.getElementById("sosBtn").classList.add("hidden");
+  }else{
+    document.getElementById("sosBtn").classList.remove("hidden");
+  }
+
   if(users[u].role === "ADMIN"){
     document.getElementById("adminPanel").classList.remove("hidden");
     document.getElementById("userPanel").classList.add("hidden");
@@ -960,6 +991,7 @@ function userRenderObligations(){
   }
 
   items.forEach(o=>{
+    // UNA VEZ INFORMADO o PAGADO/QUITADO -> no deja repetir
     const canInform = (o.estado==="PENDIENTE" || o.estado==="RECHAZADA");
     tbody.innerHTML += `
       <tr>
@@ -1020,7 +1052,6 @@ function confirmPayModal(){
 
   let medio = document.getElementById("pmMedio").value;
   let extra = document.getElementById("pmOtro").value.trim();
-
   if(medio==="Otro" && !extra) return;
 
   const medioFinal = (medio==="Otro") ? extra : medio;
@@ -1577,7 +1608,6 @@ function adminApprove(id){
   saveAll();
   adminRenderObligations();
 }
-
 function adminReject(id){
   const ob = obligations.find(o=>o.id===id);
   if(!ob) return;
@@ -1591,7 +1621,6 @@ function adminReject(id){
   saveAll();
   adminRenderObligations();
 }
-
 function adminApplyQuita(id){
   const ob = obligations.find(o=>o.id===id);
   if(!ob) return;
@@ -1626,7 +1655,6 @@ function adminApplyQuita(id){
     return;
   }
 }
-
 function adminEditPunitorio(id){
   const ob = obligations.find(o=>o.id===id);
   if(!ob) return;
@@ -1646,7 +1674,6 @@ function adminEditPunitorio(id){
   saveAll();
   adminRenderObligations();
 }
-
 function adminDeleteObligation(id){
   if(!confirm("Eliminar obligación?")) return;
   obligations = obligations.filter(o=>o.id!==id);
@@ -1654,7 +1681,7 @@ function adminDeleteObligation(id){
   adminRenderObligations();
 }
 
-/* TALLER + ACEITE + WHATSAPP (igual) */
+/* TALLER + ACEITE + WHATSAPP */
 function adminRenderTallerAll(){
   adminRenderVehicleSelectors();
   const dom = document.getElementById("oilDom").value;
@@ -1698,7 +1725,6 @@ function adminAddTaller(){
   document.getElementById("tDesc").value="";
   adminRenderTaller();
 }
-
 function adminRenderTaller(){
   const tbody = document.getElementById("tallerTable");
   tbody.innerHTML = "";
@@ -1951,6 +1977,23 @@ function adminResetAll(){
   location.reload();
 }
 
+/* ========= SOS ========= */
+function openSOS(){ document.getElementById("sosOverlay").style.display = "flex"; }
+function closeSOS(){ document.getElementById("sosOverlay").style.display = "none"; }
+
+// 1) Llamar recupero
+function callRecupero(){ window.location.href = "tel:+541152889290"; }
+// 2) WhatsApp propietario 1130697389
+function waProp1(){
+  const msg = encodeURIComponent("S.O.S");
+  window.open("https://wa.me/1130697389?text="+msg, "_blank", "noopener,noreferrer");
+}
+// 3) WhatsApp propietario 1170091012
+function waProp2(){
+  const msg = encodeURIComponent("S.O.S");
+  window.open("https://wa.me/1170091012?text="+msg, "_blank", "noopener,noreferrer");
+}
+
 /* INIT */
 (function init(){
   applyLogo();
@@ -1963,3 +2006,4 @@ function adminResetAll(){
 </script>
 </body>
 </html>
+
