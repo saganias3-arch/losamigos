@@ -72,7 +72,6 @@
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     @media(max-width:860px){.grid2{grid-template-columns:1fr}}
 
-    /* Mobile: tables -> cards */
     @media(max-width:820px){
       .box{padding:12px}
       .col{min-width:180px}
@@ -88,12 +87,22 @@
     }
 
     .logoWrap{display:flex;justify-content:center;margin-bottom:10px}
-    .logo{
-      max-width:220px; max-height:70px; object-fit:contain;
+    .logo{max-width:220px; max-height:70px; object-fit:contain;}
+    .logoSmall{max-width:140px; max-height:42px; object-fit:contain;}
+
+    .modalOverlay{
+      position:fixed; inset:0; background:rgba(0,0,0,.45);
+      display:none; align-items:center; justify-content:center; padding:18px; z-index:9999;
     }
-    .logoSmall{
-      max-width:140px; max-height:42px; object-fit:contain;
+    .modal{
+      width:680px; max-width:98vw; background:#fff; border-radius:14px;
+      padding:14px; box-shadow:0 12px 30px rgba(0,0,0,.3);
     }
+    .modalHead{display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .kpi{display:flex; gap:8px; flex-wrap:wrap}
+    .kpi .pill{background:#fff}
+    .copyRow{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+    .copyRow input{flex:1; min-width:220px}
   </style>
 </head>
 
@@ -137,9 +146,7 @@
     <div class="cardline" id="userHomeCard">
       <h3 id="userHello" style="margin-top:0"></h3>
       <div class="row">
-        <div class="col">
-          <div><b>Estado de cuenta:</b> <span id="userEstado"></span></div>
-        </div>
+        <div class="col"><div><b>Estado de cuenta:</b> <span id="userEstado"></span></div></div>
         <div class="col" id="userSingleVehicleSummary"></div>
       </div>
     </div>
@@ -172,9 +179,7 @@
           <select id="kmDomSelect"></select>
           <input id="kmValue" type="number" placeholder="Kilometraje actual" />
         </div>
-        <div class="col">
-          <button onclick="userSaveKm()" style="width:100%">Guardar</button>
-        </div>
+        <div class="col"><button onclick="userSaveKm()" style="width:100%">Guardar</button></div>
       </div>
 
       <h4 style="margin-top:12px">Aceite</h4>
@@ -288,22 +293,30 @@
 
     <!-- OBLIGATIONS -->
     <div id="aOb" class="section hidden">
+      <div class="cardline">
+        <h4 style="margin-top:0">Transferencia bancaria</h4>
+        <div class="grid2">
+          <div>
+            <input id="bankAlias" placeholder="Alias" />
+            <input id="bankCbu" placeholder="CBU" />
+          </div>
+          <div>
+            <input id="bankTitular" placeholder="Titular" />
+            <button class="btn-ok" onclick="adminSaveBank()" style="width:100%">Guardar</button>
+          </div>
+        </div>
+      </div>
+
       <div class="row">
-        <div class="col">
-          <input id="fDom" placeholder="Filtrar dominio" />
-        </div>
-        <div class="col">
-          <input id="fUser" placeholder="Filtrar usuario" />
-        </div>
+        <div class="col"><input id="fDom" placeholder="Filtrar dominio" /></div>
+        <div class="col"><input id="fUser" placeholder="Filtrar usuario" /></div>
         <div class="col">
           <select id="fVencidas">
             <option value="">Todas</option>
             <option value="vencidas">Solo vencidas</option>
           </select>
         </div>
-        <div class="col">
-          <button onclick="adminRenderObligations()" style="width:100%">Aplicar</button>
-        </div>
+        <div class="col"><button onclick="adminRenderObligations()" style="width:100%">Aplicar</button></div>
       </div>
 
       <div class="menu" style="margin-top:10px">
@@ -418,9 +431,7 @@
 
       <h4>Historial taller</h4>
       <table>
-        <thead>
-          <tr><th>Dominio</th><th>Fecha</th><th>KM</th><th>Tipo</th><th>Costo</th><th>Taller</th><th>Descripción</th><th>Por</th></tr>
-        </thead>
+        <thead><tr><th>Dominio</th><th>Fecha</th><th>KM</th><th>Tipo</th><th>Costo</th><th>Taller</th><th>Descripción</th><th>Por</th></tr></thead>
         <tbody id="tallerTable"></tbody>
       </table>
 
@@ -461,6 +472,60 @@
   </div>
 </div>
 
+<!-- MODAL INFORMAR PAGO -->
+<div id="payModalOverlay" class="modalOverlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <div class="modalHead">
+      <div>
+        <div><b id="pmTitle">Informar pago</b></div>
+        <div class="kpi" style="margin-top:6px">
+          <span class="pill" id="pmDom"></span>
+          <span class="pill" id="pmConcepto"></span>
+          <span class="pill" id="pmMonto"></span>
+          <span class="pill" id="pmVence"></span>
+        </div>
+      </div>
+      <button class="btn-secondary" onclick="closePayModal()">Cerrar</button>
+    </div>
+
+    <div style="margin-top:10px" class="grid2">
+      <div>
+        <select id="pmMedio">
+          <option value="Transferencia">Transferencia</option>
+          <option value="Efectivo">Efectivo</option>
+          <option value="Otro">Otro</option>
+        </select>
+        <input id="pmOtro" placeholder="Detalle (si corresponde)" />
+        <button class="btn-ok" onclick="confirmPayModal()" style="width:100%;margin-top:6px">Confirmar</button>
+      </div>
+
+      <div>
+        <div class="cardline" style="margin-top:0">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+            <b>Datos de transferencia</b>
+            <button class="btn-secondary" onclick="copyBankAll()">Copiar todo</button>
+          </div>
+          <div style="margin-top:8px">
+            <div class="copyRow">
+              <input id="pmAlias" readonly />
+              <button class="btn-secondary" onclick="copyVal('pmAlias')">Copiar</button>
+            </div>
+            <div class="copyRow">
+              <input id="pmCbu" readonly />
+              <button class="btn-secondary" onclick="copyVal('pmCbu')">Copiar</button>
+            </div>
+            <div class="copyRow">
+              <input id="pmTitular" readonly />
+              <button class="btn-secondary" onclick="copyVal('pmTitular')">Copiar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 <script>
 /* ========= CONFIG ========= */
 const LOGO_URL = "https://drive.google.com/uc?export=view&id=19j4ofQV4ONnwBDKXss16-L2F2rh5DK32";
@@ -469,20 +534,23 @@ const OIL_INTERVAL_KM = 1200;
 const OIL_WARN_THRESHOLD = 300;
 
 const RENT_GEN_OFFSET_DAYS = 5;
-const RENT_DUE_OFFSET_DAYS = 7;      // vence al día 7 desde inicio + (semanas)
-const PENALTY_RATE = 0.10;           // 10% del alquiler semanal
-const PENALTY_PERIOD_DAYS = 7;       // semanal
+const RENT_DUE_OFFSET_DAYS = 7;
+
+// PUNITORIOS: 10% DIARIO
+const PENALTY_RATE_DAILY = 0.10;
+const PENALTY_PERIOD_DAYS = 1;
 
 /* ========= STORAGE ========= */
 const KEYS = {
-  users: "gv_users_v3",
-  vehicles: "gv_vehicles_v3",
-  obligations: "gv_obligations_v3",
-  kms: "gv_kms_v3",
-  logs: "gv_logs_v3",
-  taller: "gv_taller_v3",
-  oilHistory: "gv_oil_history_v3",
-  oilReminders: "gv_oil_reminders_v3"
+  users: "gv_users_v4",
+  vehicles: "gv_vehicles_v4",
+  obligations: "gv_obligations_v4",
+  kms: "gv_kms_v4",
+  logs: "gv_logs_v4",
+  taller: "gv_taller_v4",
+  oilHistory: "gv_oil_history_v4",
+  oilReminders: "gv_oil_reminders_v4",
+  bank: "gv_bank_v4"
 };
 
 function loadJSON(key, fallback){
@@ -504,13 +572,14 @@ let users = loadJSON(KEYS.users, {
     alquiler: { inicio:"", monto:0, estado:"FINALIZADO" }
   }
 });
-let vehicles = loadJSON(KEYS.vehicles, {});   // {dominio:{...}}
-let obligations = loadJSON(KEYS.obligations, []); // array
-let kms = loadJSON(KEYS.kms, []); // array
-let logs = loadJSON(KEYS.logs, []); // array
-let taller = loadJSON(KEYS.taller, []); // array
-let oilHistory = loadJSON(KEYS.oilHistory, []); // array
-let oilReminders = loadJSON(KEYS.oilReminders, []); // array
+let vehicles = loadJSON(KEYS.vehicles, {});
+let obligations = loadJSON(KEYS.obligations, []);
+let kms = loadJSON(KEYS.kms, []);
+let logs = loadJSON(KEYS.logs, []);
+let taller = loadJSON(KEYS.taller, []);
+let oilHistory = loadJSON(KEYS.oilHistory, []);
+let oilReminders = loadJSON(KEYS.oilReminders, []);
+let bank = loadJSON(KEYS.bank, { alias:"", cbu:"", titular:"" });
 
 function saveAll(){
   saveJSON(KEYS.users, users);
@@ -521,10 +590,12 @@ function saveAll(){
   saveJSON(KEYS.taller, taller);
   saveJSON(KEYS.oilHistory, oilHistory);
   saveJSON(KEYS.oilReminders, oilReminders);
+  saveJSON(KEYS.bank, bank);
 }
 
 /* ========= HELPERS ========= */
 let currentUser = null;
+let payModalObId = null;
 
 function esc(s){
   return String(s ?? "")
@@ -554,7 +625,6 @@ function addDays(date, days){
   return d;
 }
 function daysBetween(a,b){
-  // whole days between (b - a)
   const ms = (b.getTime() - a.getTime());
   return Math.floor(ms / (24*60*60*1000));
 }
@@ -563,16 +633,24 @@ function normalizeWhatsAppPhone(raw){
   return String(raw||"").replace(/\D/g,"");
 }
 
+function copyVal(id){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.select?.();
+  el.setSelectionRange?.(0, el.value.length);
+  navigator.clipboard?.writeText(el.value || "");
+}
+function copyBankAll(){
+  const txt = `ALIAS: ${bank.alias}\nCBU: ${bank.cbu}\nTITULAR: ${bank.titular}`;
+  navigator.clipboard?.writeText(txt);
+}
+
 function getUserVehicles(username){
   return Object.values(vehicles)
     .filter(v => (v.usuario || "") === username)
     .sort((a,b)=>a.dominio.localeCompare(b.dominio));
 }
 function vehicleOwnerUsername(dom){ return vehicles[dom]?.usuario || ""; }
-function vehicleOwnerPhone(dom){
-  const u = vehicleOwnerUsername(dom);
-  return users[u]?.telefono || "";
-}
 
 function ensureVehicleOilFields(v){
   if(!v.aceite){
@@ -623,26 +701,16 @@ function computeAccountStatus(username){
   return hasDebt ? "DEUDA" : "AL_DIA";
 }
 
-/* ========= AUTO GENERATORS (ALQUILER + PUNITORIOS) ========= */
-
+/* ========= AUTO GENERATORS ========= */
 function getUserRentPlan(username){
   const plan = users[username]?.alquiler || {inicio:"",monto:0,estado:"FINALIZADO"};
-  return {
-    inicio: plan.inicio || "",
-    monto: Number(plan.monto||0),
-    estado: plan.estado || "FINALIZADO"
-  };
+  return { inicio: plan.inicio || "", monto: Number(plan.monto||0), estado: plan.estado || "FINALIZADO" };
 }
-
 function getPrimaryDomainForUser(username){
-  // si hay varios, usa el primero ordenado
   const list = getUserVehicles(username);
   return list.length ? list[0].dominio : "";
 }
-
-function obExistsByKey(key){
-  return obligations.some(o=>o.autoKey===key);
-}
+function obExistsByKey(key){ return obligations.some(o=>o.autoKey===key); }
 
 function autoCreateRentObligationsForUser(username){
   const plan = getUserRentPlan(username);
@@ -657,10 +725,7 @@ function autoCreateRentObligationsForUser(username){
   const today = parseISO(todayISO());
   if(!start || !today) return;
 
-  // semana 0: gen = start+5, due = start+7
   const gen0 = addDays(start, RENT_GEN_OFFSET_DAYS);
-
-  // si todavía no llegó gen0, no crea
   if(today < gen0) return;
 
   const daysSinceGen0 = daysBetween(gen0, today);
@@ -691,9 +756,7 @@ function autoCreateRentObligationsForUser(username){
   }
 }
 
-function autoCreatePenaltiesForRentObligation(rentOb){
-  // Crea punitorios semanales del 10% hasta que se pague la principal.
-  // Solo aplica a obligaciones de alquiler.
+function autoCreateDailyPenaltiesForRentObligation(rentOb){
   if(rentOb.subtipo !== "ALQUILER") return;
   if(rentOb.estado === "PAGADA") return;
 
@@ -708,18 +771,12 @@ function autoCreatePenaltiesForRentObligation(rentOb){
   const today = parseISO(todayISO());
   const due = parseISO(rentOb.vencimiento);
   if(!today || !due) return;
-  if(today <= due) return; // no mora aún
+  if(today <= due) return;
 
-  const daysLate = daysBetween(due, today);
-  const weeksLate = Math.floor(daysLate / PENALTY_PERIOD_DAYS) + 1; // 1er punitorio al pasar 0..6 días? se considera semana de mora iniciada
-
-  for(let k=1; k<=weeksLate; k++){
-    // punitorio k: vence a la semana de mora + 2 días (mismo patrón que alquiler: 7 total)
-    // simplificación: vence 2 días luego del "inicio de esa semana de mora"
-    const weekStart = addDays(due, (k-1)*PENALTY_PERIOD_DAYS);
-    const penDue = addDays(weekStart, 2);
-
-    const key = `PEN:${rentOb.id}:${k}`;
+  const daysLate = daysBetween(due, today); // 1 = un día tarde
+  for(let d=1; d<=daysLate; d++){
+    const dayDate = addDays(due, d);
+    const key = `PEN_D:${rentOb.id}:${fmtISO(dayDate)}`;
     if(obExistsByKey(key)) continue;
 
     obligations.push({
@@ -727,9 +784,9 @@ function autoCreatePenaltiesForRentObligation(rentOb){
       tipo: "AUTOMATICA",
       subtipo: "PUNITORIO",
       dominio: dom,
-      concepto: `Punitorio mora 10% (semana ${k})`,
-      monto: Math.round(baseRent * PENALTY_RATE),
-      vencimiento: fmtISO(penDue),
+      concepto: `Punitorio mora 10% (${fmtISO(dayDate)})`,
+      monto: Math.round(baseRent * PENALTY_RATE_DAILY),
+      vencimiento: fmtISO(dayDate),
       estado: "PENDIENTE",
       medioPago: "",
       fechaPago: "",
@@ -741,19 +798,16 @@ function autoCreatePenaltiesForRentObligation(rentOb){
 }
 
 function runAutoGeneration(){
-  // alquiler
   Object.keys(users).forEach(u=>{
     if(u==="admin") return;
     if(users[u].role !== "USUARIO") return;
     autoCreateRentObligationsForUser(u);
   });
 
-  // punitorios
   const rentals = obligations.filter(o => o.subtipo==="ALQUILER");
   rentals.forEach(o=>{
-    // si la principal se paga, no genera más punitorios futuros
     if(o.estado !== "PAGADA"){
-      autoCreatePenaltiesForRentObligation(o);
+      autoCreateDailyPenaltiesForRentObligation(o);
     }
   });
 
@@ -770,16 +824,13 @@ function login(){
   const u = document.getElementById("loginUser").value.trim();
   const p = document.getElementById("loginPass").value;
 
-  if(!users[u] || users[u].password !== p){
-    return;
-  }
+  if(!users[u] || users[u].password !== p){ return; }
 
   currentUser = u;
 
   logs.unshift({ user: u, date: nowStr() });
   saveAll();
 
-  // generar automáticas al iniciar sesión
   runAutoGeneration();
 
   document.getElementById("loginBox").classList.add("hidden");
@@ -807,7 +858,6 @@ function logout(){ location.reload(); }
 function showUserTab(id){
   ["uPagos","uKm","uDocs"].forEach(x=>document.getElementById(x).classList.add("hidden"));
   document.getElementById(id).classList.remove("hidden");
-
   if(id==="uPagos"){ userRenderHeader(); userRenderVehicles(); userRenderObligations(); }
   if(id==="uKm"){ userRenderKm(); }
   if(id==="uDocs"){ userRenderDocs(); }
@@ -815,10 +865,9 @@ function showUserTab(id){
 function showAdminTab(id){
   ["aUsers","aVeh","aOb","aTaller","aKm","aLogs"].forEach(x=>document.getElementById(x).classList.add("hidden"));
   document.getElementById(id).classList.remove("hidden");
-
   if(id==="aUsers") adminRenderUsers();
   if(id==="aVeh") adminRenderVehicles();
-  if(id==="aOb") { showObTab("pendientes"); adminRenderObligations(); }
+  if(id==="aOb") { adminLoadBankUI(); showObTab("pendientes"); adminRenderObligations(); }
   if(id==="aTaller") adminRenderTallerAll();
   if(id==="aKm") adminRenderKm();
   if(id==="aLogs") adminRenderLogs();
@@ -826,6 +875,19 @@ function showAdminTab(id){
 function showObTab(tab){
   ["ob_pendientes","ob_aprobadas","ob_rechazadas","ob_punitorios"].forEach(x=>document.getElementById(x).classList.add("hidden"));
   document.getElementById("ob_"+tab).classList.remove("hidden");
+}
+
+/* ========= BANK ========= */
+function adminLoadBankUI(){
+  document.getElementById("bankAlias").value = bank.alias || "";
+  document.getElementById("bankCbu").value = bank.cbu || "";
+  document.getElementById("bankTitular").value = bank.titular || "";
+}
+function adminSaveBank(){
+  bank.alias = document.getElementById("bankAlias").value.trim();
+  bank.cbu = document.getElementById("bankCbu").value.trim();
+  bank.titular = document.getElementById("bankTitular").value.trim();
+  saveAll();
 }
 
 /* ========= USER ========= */
@@ -865,13 +927,8 @@ function userRenderHeader(){
 function userRenderVehicles(){
   const tbody = document.getElementById("userVehTable");
   tbody.innerHTML = "";
-
   const my = getUserVehicles(currentUser);
-  if(my.length===0){
-    tbody.innerHTML = `<tr><td colspan="7" data-label="Estado">Sin vehículos</td></tr>`;
-    return;
-  }
-
+  if(my.length===0){ tbody.innerHTML = `<tr><td colspan="7" data-label="Estado">Sin vehículos</td></tr>`; return; }
   my.forEach(v=>{
     const oil = computeOilStatusForVehicle(v);
     tbody.innerHTML += `
@@ -915,45 +972,74 @@ function userRenderObligations(){
         <td data-label="Fecha">${esc(o.fechaPago||"-")}</td>
         <td data-label="Obs.">${esc(o.motivoRechazo||"-")}</td>
         <td data-label="Acción">
-          ${canInform ? `<button onclick="userInformPayment(${o.id})">Informar pago</button>` : "—"}
+          ${canInform ? `<button type="button" onclick="openPayModal(${o.id})">Informar pago</button>` : "—"}
         </td>
       </tr>
     `;
   });
 }
 
-function userInformPayment(id){
+function openPayModal(id){
+  const ob = obligations.find(o=>o.id===id);
+  if(!ob) return;
+  if(!(ob.estado==="PENDIENTE" || ob.estado==="RECHAZADA")) return;
+
+  const veh = vehicles[ob.dominio];
+  if(!veh || veh.usuario !== currentUser) return;
+
+  payModalObId = id;
+
+  document.getElementById("pmDom").textContent = ob.dominio;
+  document.getElementById("pmConcepto").textContent = ob.concepto;
+  document.getElementById("pmMonto").textContent = "$" + Number(ob.monto||0);
+  document.getElementById("pmVence").textContent = ob.vencimiento;
+
+  document.getElementById("pmMedio").value = "Transferencia";
+  document.getElementById("pmOtro").value = "";
+
+  document.getElementById("pmAlias").value = bank.alias || "";
+  document.getElementById("pmCbu").value = bank.cbu || "";
+  document.getElementById("pmTitular").value = bank.titular || "";
+
+  document.getElementById("payModalOverlay").style.display = "flex";
+}
+
+function closePayModal(){
+  payModalObId = null;
+  document.getElementById("payModalOverlay").style.display = "none";
+}
+
+function confirmPayModal(){
+  const id = payModalObId;
   const ob = obligations.find(o=>o.id===id);
   if(!ob) return;
 
-  if(!(ob.estado==="PENDIENTE" || ob.estado==="RECHAZADA")){
-    return;
-  }
-
+  if(!(ob.estado==="PENDIENTE" || ob.estado==="RECHAZADA")) return;
   const veh = vehicles[ob.dominio];
-  if(!veh || veh.usuario !== currentUser){
-    return;
-  }
+  if(!veh || veh.usuario !== currentUser) return;
 
-  const medio = prompt("Medio de pago:");
-  if(medio===null) return;
-  const m = medio.trim();
-  if(!m) return;
+  let medio = document.getElementById("pmMedio").value;
+  let extra = document.getElementById("pmOtro").value.trim();
+
+  if(medio==="Otro" && !extra) return;
+
+  const medioFinal = (medio==="Otro") ? extra : medio;
 
   ob.estado = "INFORMADO";
-  ob.medioPago = m;
+  ob.medioPago = medioFinal;
   ob.fechaPago = nowStr();
   ob.motivoRechazo = "";
 
   saveAll();
+  closePayModal();
   userRenderObligations();
   userRenderHeader();
 }
 
+/* KM */
 function userRenderKm(){
   const sel = document.getElementById("kmDomSelect");
   sel.innerHTML = "";
-
   const my = getUserVehicles(currentUser);
   if(my.length===0){
     sel.innerHTML = `<option value="">Sin vehículos</option>`;
@@ -981,7 +1067,6 @@ function userRenderKm(){
 
   const tbody = document.getElementById("userKmTable");
   tbody.innerHTML = "";
-
   const myDom = new Set(my.map(v=>v.dominio));
   const items = kms.filter(k=>myDom.has(k.dominio));
   if(items.length===0){
@@ -1002,7 +1087,6 @@ function userRenderKm(){
 function userSaveKm(){
   const dom = document.getElementById("kmDomSelect").value;
   const km = Number(document.getElementById("kmValue").value || 0);
-
   if(!dom) return;
   if(!vehicles[dom] || vehicles[dom].usuario !== currentUser) return;
   if(!km || km<=0) return;
@@ -1032,12 +1116,8 @@ function userSaveKm(){
 function userRenderDocs(){
   const cards = document.getElementById("userDocsCards");
   cards.innerHTML = "";
-
   const my = getUserVehicles(currentUser);
-  if(my.length===0){
-    cards.innerHTML = `<div class="cardline">Sin vehículos</div>`;
-    return;
-  }
+  if(my.length===0){ cards.innerHTML = `<div class="cardline">Sin vehículos</div>`; return; }
 
   my.forEach(v=>{
     cards.innerHTML += `
@@ -1055,7 +1135,7 @@ function userRenderDocs(){
   });
 }
 
-/* ========= ADMIN USERS ========= */
+/* ========= ADMIN ========= */
 function adminRenderAll(){
   runAutoGeneration();
   adminRenderUsers();
@@ -1130,7 +1210,6 @@ function adminRenderUsers(){
         </td>
         <td data-label="Teléfono"><input id="ut_${esc(u)}" value="${esc(users[u].telefono||"")}"></td>
         <td data-label="Clave"><input id="up_${esc(u)}" value="${esc(users[u].password||"")}"></td>
-
         <td data-label="Alq inicio"><input id="ai_${esc(u)}" type="date" value="${esc(alq.inicio||"")}"></td>
         <td data-label="Alq monto"><input id="am_${esc(u)}" type="number" value="${Number(alq.monto||0)}"></td>
         <td data-label="Alq estado">
@@ -1140,14 +1219,12 @@ function adminRenderUsers(){
             <option value="FINALIZADO" ${alq.estado==="FINALIZADO"?"selected":""}>FINALIZADO</option>
           </select>
         </td>
-
         <td data-label="Guardar"><button class="btn-ok" onclick="adminSaveUser('${esc(u)}')">💾</button></td>
         <td data-label="Eliminar"><button class="btn-danger" onclick="adminDeleteUser('${esc(u)}')" ${isRoot ? "disabled" : ""}>🗑</button></td>
       </tr>
     `;
   });
 
-  // dropdown asignación vehículos: solo USUARIO
   const assign = document.getElementById("vAssign");
   assign.innerHTML = `<option value="">Sin asignar</option>`;
   Object.keys(users).sort().forEach(u=>{
@@ -1191,11 +1268,7 @@ function adminSaveUser(u){
 function adminDeleteUser(u){
   if(u==="admin") return;
   if(!confirm(`Eliminar usuario ${u}?`)) return;
-
-  Object.values(vehicles).forEach(v=>{
-    if(v.usuario === u) v.usuario = "";
-  });
-
+  Object.values(vehicles).forEach(v=>{ if(v.usuario === u) v.usuario = ""; });
   delete users[u];
   saveAll();
   adminRenderUsers();
@@ -1203,7 +1276,7 @@ function adminDeleteUser(u){
   adminRenderObligations();
 }
 
-/* ========= ADMIN VEHICLES ========= */
+/* VEHICLES */
 function adminRenderVehicles(){
   const sel = document.getElementById("vehSelect");
   sel.innerHTML = `<option value="">Nuevo</option>`;
@@ -1259,10 +1332,7 @@ function adminRenderVehicleSelectors(){
 
   const build = (sel) => {
     sel.innerHTML = "";
-    if(doms.length===0){
-      sel.innerHTML = `<option value="">Sin vehículos</option>`;
-      return;
-    }
+    if(doms.length===0){ sel.innerHTML = `<option value="">Sin vehículos</option>`; return; }
     doms.forEach(d=> sel.innerHTML += `<option value="${esc(d)}">${esc(d)}</option>`);
   };
   build(obSel); build(tSel); build(oilSel);
@@ -1316,7 +1386,6 @@ function adminSaveVehicle(){
   const isRename = selected && selected !== dom;
   if(isRename){
     if(vehicles[dom]) return;
-
     const old = vehicles[selected];
     payload.kmActual = Number(old?.kmActual || 0);
     payload.kmUpdatedAt = old?.kmUpdatedAt || "";
@@ -1330,7 +1399,6 @@ function adminSaveVehicle(){
     taller.forEach(t=>{ if(t.dominio===selected) t.dominio = dom; });
     oilHistory.forEach(h=>{ if(h.dominio===selected) h.dominio = dom; });
     oilReminders.forEach(r=>{ if(r.dominio===selected) r.dominio = dom; });
-
   }else{
     if(vehicles[dom]){
       const old = vehicles[dom];
@@ -1346,7 +1414,6 @@ function adminSaveVehicle(){
   adminRenderVehicles();
   adminRenderObligations();
   adminRenderVehicleSelectors();
-
   document.getElementById("vehSelect").value = dom;
 }
 
@@ -1382,7 +1449,7 @@ function adminDeleteVehicle(){
   adminLoadVehicleForm();
 }
 
-/* ========= ADMIN OBLIGATIONS ========= */
+/* OBLIGATIONS */
 function adminAddObligation(){
   const dom = document.getElementById("obDom").value.trim().toUpperCase();
   const concepto = document.getElementById("obConcepto").value.trim();
@@ -1414,7 +1481,6 @@ function adminAddObligation(){
   document.getElementById("obConcepto").value="";
   document.getElementById("obMonto").value="";
   document.getElementById("obVence").value="";
-
   adminRenderObligations();
 }
 
@@ -1435,7 +1501,6 @@ function obligationMatchesFilters(o){
     const venc = parseISO(o.vencimiento);
     if(!(venc && venc < hoy)) return false;
   }
-
   return true;
 }
 
@@ -1449,13 +1514,10 @@ function adminRenderObligations(){
   pend.innerHTML = ""; apr.innerHTML = ""; rej.innerHTML = ""; pun.innerHTML = "";
 
   const filtered = obligations.filter(obligationMatchesFilters);
-
-  // Orden por vencimiento
   filtered.sort((a,b)=> new Date(a.vencimiento) - new Date(b.vencimiento));
 
   filtered.forEach(o=>{
     const owner = vehicleOwnerUsername(o.dominio) || "-";
-
     if(o.subtipo==="PUNITORIO"){
       pun.innerHTML += `
         <tr>
@@ -1494,13 +1556,10 @@ function adminRenderObligations(){
           <td data-label="Rechazar"><button class="btn-warn" ${can?"":"disabled"} onclick="adminReject(${o.id})">❌</button></td>
         </tr>
       `;
-    }else if(o.estado==="PAGADA"){
+    }else if(o.estado==="PAGADA" || o.estado==="QUITADA"){
       apr.innerHTML += `<tr>${base}</tr>`;
     }else if(o.estado==="RECHAZADA"){
       rej.innerHTML += `<tr>${base}<td data-label="Motivo">${esc(o.motivoRechazo||"-")}</td></tr>`;
-    }else if(o.estado==="QUITADA"){
-      // queda como "aprobadas" a efectos prácticos
-      apr.innerHTML += `<tr>${base}</tr>`;
     }
   });
 
@@ -1514,7 +1573,6 @@ function adminApprove(id){
   const ob = obligations.find(o=>o.id===id);
   if(!ob) return;
   if(ob.estado !== "INFORMADO") return;
-
   ob.estado = "PAGADA";
   saveAll();
   adminRenderObligations();
@@ -1524,12 +1582,10 @@ function adminReject(id){
   const ob = obligations.find(o=>o.id===id);
   if(!ob) return;
   if(ob.estado !== "INFORMADO") return;
-
   const motivo = prompt("Motivo rechazo:");
   if(motivo===null) return;
   const m = motivo.trim();
   if(!m) return;
-
   ob.estado = "RECHAZADA";
   ob.motivoRechazo = m;
   saveAll();
@@ -1554,7 +1610,6 @@ function adminApplyQuita(id){
     adminRenderObligations();
     return;
   }
-
   if(t==="P"){
     const nuevo = prompt("Nuevo monto:");
     if(nuevo===null) return;
@@ -1599,7 +1654,7 @@ function adminDeleteObligation(id){
   adminRenderObligations();
 }
 
-/* ========= ADMIN TALLER + ACEITE + WHATSAPP ========= */
+/* TALLER + ACEITE + WHATSAPP (igual) */
 function adminRenderTallerAll(){
   adminRenderVehicleSelectors();
   const dom = document.getElementById("oilDom").value;
@@ -1630,23 +1685,12 @@ function adminAddTaller(){
   const costo = Number(document.getElementById("tCosto").value || 0);
   const tallerName = document.getElementById("tTaller").value.trim();
   const desc = document.getElementById("tDesc").value.trim();
-
   if(!dom || !vehicles[dom]) return;
   if(!tipo) return;
 
-  taller.unshift({
-    id: uid(),
-    dominio: dom,
-    fecha,
-    km: km || (Number(vehicles[dom].kmActual||0) || 0),
-    tipo,
-    costo,
-    taller: tallerName,
-    desc,
-    creadoPor: currentUser
-  });
-
+  taller.unshift({ id: uid(), dominio: dom, fecha, km: km || (Number(vehicles[dom].kmActual||0) || 0), tipo, costo, taller: tallerName, desc, creadoPor: currentUser });
   saveAll();
+
   document.getElementById("tKm").value="";
   document.getElementById("tTipo").value="";
   document.getElementById("tCosto").value="";
@@ -1658,11 +1702,7 @@ function adminAddTaller(){
 function adminRenderTaller(){
   const tbody = document.getElementById("tallerTable");
   tbody.innerHTML = "";
-
-  if(taller.length===0){
-    tbody.innerHTML = `<tr><td colspan="8" data-label="Estado">—</td></tr>`;
-    return;
-  }
+  if(taller.length===0){ tbody.innerHTML = `<tr><td colspan="8" data-label="Estado">—</td></tr>`; return; }
   taller.slice(0,400).forEach(t=>{
     tbody.innerHTML += `
       <tr>
@@ -1674,8 +1714,7 @@ function adminRenderTaller(){
         <td data-label="Taller">${esc(t.taller||"-")}</td>
         <td data-label="Descripción">${esc(t.desc||"-")}</td>
         <td data-label="Por">${esc(t.creadoPor||"-")}</td>
-      </tr>
-    `;
+      </tr>`;
   });
 }
 
@@ -1684,8 +1723,8 @@ function adminValidateOilChange(){
   const fecha = document.getElementById("oilFecha").value || todayISO();
   const km = Number(document.getElementById("oilKm").value || 0);
   const obs = document.getElementById("oilObs").value.trim();
-
   if(!dom || !vehicles[dom]) return;
+
   const v = vehicles[dom];
   ensureVehicleOilFields(v);
 
@@ -1703,17 +1742,7 @@ function adminValidateOilChange(){
   v.aceite.ultimoCambioFecha = fecha;
   v.aceite.ultimoKmRegistrado = v.kmActual;
 
-  taller.unshift({
-    id: uid(),
-    dominio: dom,
-    fecha,
-    km,
-    tipo: "CAMBIO_ACEITE",
-    costo: 0,
-    taller: "",
-    desc: obs ? `Cambio de aceite: ${obs}` : "Cambio de aceite",
-    creadoPor: currentUser
-  });
+  taller.unshift({ id: uid(), dominio: dom, fecha, km, tipo: "CAMBIO_ACEITE", costo: 0, taller: "", desc: obs ? `Cambio de aceite: ${obs}` : "Cambio de aceite", creadoPor: currentUser });
 
   saveAll();
   document.getElementById("oilObs").value = "";
@@ -1735,24 +1764,11 @@ function adminSendOilReminderWhatsApp(){
   const nombre = users[owner]?.nombre || owner;
   const estadoTxt = (oil.estado==="OK") ? "OK" : (oil.estado==="PROXIMO" ? "PRÓXIMO" : "VENCIDO");
 
-  const msg =
-`Hola ${nombre},
-vehículo ${v.dominio} - cambio de aceite ${estadoTxt}.
-Restan ${oil.restantes} km.`;
-
+  const msg = `Hola ${nombre},\nvehículo ${v.dominio} - cambio de aceite ${estadoTxt}.\nRestan ${oil.restantes} km.`;
   const url = `https://wa.me/${encodeURIComponent(tel)}?text=${encodeURIComponent(msg)}`;
   window.open(url, "_blank", "noopener,noreferrer");
 
-  oilReminders.unshift({
-    id: uid(),
-    dominio: dom,
-    user: owner,
-    telefono: tel,
-    estadoAceite: oil.estado,
-    kmRestantes: oil.restantes,
-    fecha: nowStr()
-  });
-
+  oilReminders.unshift({ id: uid(), dominio: dom, user: owner, telefono: tel, estadoAceite: oil.estado, kmRestantes: oil.restantes, fecha: nowStr() });
   saveAll();
   adminRenderOilReminders();
 }
@@ -1760,11 +1776,7 @@ Restan ${oil.restantes} km.`;
 function adminRenderOilHistory(){
   const tbody = document.getElementById("oilHistoryTable");
   tbody.innerHTML = "";
-
-  if(oilHistory.length===0){
-    tbody.innerHTML = `<tr><td colspan="5" data-label="Estado">—</td></tr>`;
-    return;
-  }
+  if(oilHistory.length===0){ tbody.innerHTML = `<tr><td colspan="5" data-label="Estado">—</td></tr>`; return; }
   oilHistory.slice(0,400).forEach(h=>{
     tbody.innerHTML += `
       <tr>
@@ -1773,19 +1785,14 @@ function adminRenderOilHistory(){
         <td data-label="KM">${Number(h.km||0)}</td>
         <td data-label="Obs.">${esc(h.obs||"-")}</td>
         <td data-label="Por">${esc(h.validadoPor||"-")}</td>
-      </tr>
-    `;
+      </tr>`;
   });
 }
 
 function adminRenderOilReminders(){
   const tbody = document.getElementById("oilReminderTable");
   tbody.innerHTML = "";
-
-  if(oilReminders.length===0){
-    tbody.innerHTML = `<tr><td colspan="6" data-label="Estado">—</td></tr>`;
-    return;
-  }
+  if(oilReminders.length===0){ tbody.innerHTML = `<tr><td colspan="6" data-label="Estado">—</td></tr>`; return; }
   oilReminders.slice(0,500).forEach(r=>{
     const estadoTxt = (r.estadoAceite==="OK") ? "OK" : (r.estadoAceite==="PROXIMO" ? "PRÓXIMO" : "VENCIDO");
     tbody.innerHTML += `
@@ -1796,20 +1803,15 @@ function adminRenderOilReminders(){
         <td data-label="Estado">${esc(estadoTxt)}</td>
         <td data-label="Restan">${Number(r.kmRestantes||0)}</td>
         <td data-label="Fecha">${esc(r.fecha)}</td>
-      </tr>
-    `;
+      </tr>`;
   });
 }
 
-/* ========= ADMIN KM + LOGS ========= */
+/* KM + LOGS */
 function adminRenderKm(){
   const tbody = document.getElementById("adminKmTable");
   tbody.innerHTML = "";
-
-  if(kms.length===0){
-    tbody.innerHTML = `<tr><td colspan="4" data-label="Estado">—</td></tr>`;
-    return;
-  }
+  if(kms.length===0){ tbody.innerHTML = `<tr><td colspan="4" data-label="Estado">—</td></tr>`; return; }
   kms.slice(0,600).forEach(k=>{
     tbody.innerHTML += `
       <tr>
@@ -1817,30 +1819,24 @@ function adminRenderKm(){
         <td data-label="KM">${Number(k.km||0)}</td>
         <td data-label="Fecha">${esc(k.fecha)}</td>
         <td data-label="Usuario">${esc(k.user||"-")}</td>
-      </tr>
-    `;
+      </tr>`;
   });
 }
 
 function adminRenderLogs(){
   const tbody = document.getElementById("logTable");
   tbody.innerHTML = "";
-
-  if(logs.length===0){
-    tbody.innerHTML = `<tr><td colspan="2" data-label="Estado">—</td></tr>`;
-    return;
-  }
+  if(logs.length===0){ tbody.innerHTML = `<tr><td colspan="2" data-label="Estado">—</td></tr>`; return; }
   logs.slice(0,700).forEach(l=>{
     tbody.innerHTML += `
       <tr>
         <td data-label="Usuario">${esc(l.user)}</td>
         <td data-label="Fecha">${esc(l.date)}</td>
-      </tr>
-    `;
+      </tr>`;
   });
 }
 
-/* ========= EXPORT ========= */
+/* EXPORT */
 function exportAdminTable(type){
   const { table, filename, title } = buildExportTable(type);
   if(!table) return;
@@ -1948,25 +1944,20 @@ function buildExportTable(type){
   return { table: tmp, filename, title };
 }
 
-/* ========= RESET ========= */
+/* RESET */
 function adminResetAll(){
   if(!confirm("Reset total?")) return;
   Object.values(KEYS).forEach(k => localStorage.removeItem(k));
   location.reload();
 }
 
-/* ========= INIT ========= */
+/* INIT */
 (function init(){
   applyLogo();
   Object.values(vehicles).forEach(v=>ensureVehicleOilFields(v));
-
-  // asegurar estructura alquiler en usuarios existentes
   Object.keys(users).forEach(u=>{
-    if(!users[u].alquiler){
-      users[u].alquiler = { inicio:"", monto:0, estado:"FINALIZADO" };
-    }
+    if(!users[u].alquiler) users[u].alquiler = { inicio:"", monto:0, estado:"FINALIZADO" };
   });
-
   saveAll();
 })();
 </script>
