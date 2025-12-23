@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Alquiler Los Amigos · Gestión Vehicular</title>
+
+<!-- EXPORT LIBS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+
+<style>
+:root{
+  --bg:linear-gradient(180deg,#0a1228,#0b1638);
+  --card:rgba(18,32,72,.88);
+  --card-soft:rgba(255,255,255,.05);
+  --text:#eef2ff;
+  --muted:#b7c3ff;
+  --line:rgba(255,255,255,.12);
+
+  --primary:#3b82f6;
+  --primary2:#1d4ed8;
+  --ok:#22c55e;
+  --danger:#ef4444;
+  --warn:#f59e0b;
+  --secondary:#64748b;
+}
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+.hidden{display:none}
+
+.box{
+  width:1200px;
+  max-width:98vw;
+  background:var(--card);
+  border-radius:20px;
+  padding:18px;
+  box-shadow:0 30px 70px rgba(0,0,0,.55);
+}
+
+.logoWrap{text-align:center;margin-bottom:14px}
+
+.topbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-bottom:14px;
+}
+
+.right{display:flex;gap:10px;align-items:center}
+
+.pill{
+  padding:6px 14px;
+  border-radius:999px;
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.08);
+  font-size:12px;
+  font-weight:800;
+}
+
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.col{flex:1;min-width:260px}
+
+h2,h3,h4{margin:8px 0;font-weight:900}
+.section{margin-top:14px}
+
+input,select,textarea{
+  width:100%;
+  padding:10px;
+  border-radius:14px;
+  border:1px solid var(--line);
+  background:rgba(0,0,0,.25);
+  color:var(--text);
+  margin:6px 0;
+}
+
+button{
+  padding:10px 16px;
+  border-radius:14px;
+  border:0;
+  font-weight:900;
+  cursor:pointer;
+  color:#fff;
+  background:linear-gradient(135deg,var(--primary),var(--primary2));
+}
+
+button:hover{opacity:.9}
+button:disabled{opacity:.4}
+
+.btn-ok{background:linear-gradient(135deg,#22c55e,#16a34a)}
+.btn-danger{background:linear-gradient(135deg,#ef4444,#b91c1c)}
+.btn-warn{background:linear-gradient(135deg,#f59e0b,#d97706);color:#111}
+.btn-secondary{background:rgba(255,255,255,.14)}
+
+.menu{
+  display:flex;
+  gap:10px;
+  margin:12px 0;
+  padding-bottom:12px;
+  border-bottom:1px solid var(--line);
+  flex-wrap:wrap;
+}
+
+.menu button{
+  background:rgba(255,255,255,.08);
+  border:1px solid var(--line);
+}
+
+.cardline{
+  background:var(--card-soft);
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:14px;
+  margin-top:12px;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:13px;
+  margin-top:10px;
+}
+
+th,td{
+  padding:10px;
+  border-bottom:1px solid var(--line);
+  text-align:center;
+}
+
+th{
+  background:rgba(255,255,255,.08);
+  font-weight:900;
+}
+
+.ok{color:var(--ok);font-weight:900}
+.bad{color:var(--danger);font-weight:900}
+
+.chip{
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:12px;
+  border:1px solid var(--line);
+}
+
+.chip.ok{color:var(--ok)}
+.chip.warn{color:var(--warn)}
+.chip.bad{color:var(--danger)}
+
+.modalOverlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.65);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+}
+
+.modal{
+  background:var(--card);
+  border-radius:20px;
+  padding:18px;
+  width:720px;
+  max-width:96vw;
+  box-shadow:0 30px 70px rgba(0,0,0,.6);
+}
+
+.sos-float{
+  position:fixed;
+  right:20px;
+  bottom:20px;
+  background:linear-gradient(135deg,#ef4444,#b91c1c);
+  padding:16px 22px;
+  border-radius:999px;
+  font-weight:1000;
+  border:0;
+  box-shadow:0 20px 40px rgba(0,0,0,.45);
+}
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div class="box" id="loginBox">
+  <div class="logoWrap">
+    <h2>Alquiler Los Amigos</h2>
+  </div>
+  <h3 style="text-align:center">Ingreso al sistema</h3>
+  <input id="loginUser" placeholder="Usuario">
+  <input id="loginPass" type="password" placeholder="Contraseña">
+  <button style="width:100%" onclick="login()">Ingresar</button>
+</div>
+
+<!-- PANEL -->
+<div class="box hidden" id="panel">
+  <div class="topbar">
+    <div>
+      <h3>Gestión Vehicular</h3>
+      <div id="panelSubtitle" style="font-size:12px;color:var(--muted)"></div>
+    </div>
+    <div class="right">
+      <span id="rolePill" class="pill"></span>
+      <button class="btn-danger" onclick="logout()">Salir</button>
+    </div>
+  </div>
+
+  <!-- USER PANEL -->
+  <div id="userPanel" class="hidden">
+    <div class="menu">
+      <button onclick="showUserTab('uPagos')">Pagos</button>
+      <button onclick="showUserTab('uKm')">Kilómetros</button>
+      <button onclick="showUserTab('uDocs')">Vehículo</button>
+    </div>
+
+    <div class="cardline">
+      <h3 id="userHello"></h3>
+      <div><b>Estado:</b> <span id="userEstado"></span></div>
+    </div>
+
+    <div id="uPagos" class="section"></div>
+    <div id="uKm" class="section hidden"></div>
+    <div id="uDocs" class="section hidden"></div>
+  </div>
+
+  <!-- ADMIN PANEL -->
+  <div id="adminPanel" class="hidden">
+    <h3 class="ok">Administrador</h3>
+    <div class="menu">
+      <button onclick="showAdminTab('aUsers')">Usuarios</button>
+      <button onclick="showAdminTab('aVeh')">Vehículos</button>
+      <button onclick="showAdminTab('aOb')">Obligaciones</button>
+      <button onclick="showAdminTab('aTaller')">Taller</button>
+      <button onclick="showAdminTab('aKm')">KM</button>
+      <button onclick="showAdminTab('aLogs')">Logs</button>
+    </div>
+
+    <div id="aUsers" class="section"></div>
+    <div id="aVeh" class="section hidden"></div>
+    <div id="aOb" class="section hidden"></div>
+    <div id="aTaller" class="section hidden"></div>
+    <div id="aKm" class="section hidden"></div>
+    <div id="aLogs" class="section hidden"></div>
+  </div>
+</div>
+
+<!-- SOS -->
+<button id="sosBtn" class="sos-float hidden" onclick="openSOS()">S.O.S</button>
+
+<!-- SOS MODAL -->
+<div class="modalOverlay" id="sosOverlay">
+  <div class="modal">
+    <h3>S.O.S</h3>
+    <button class="btn-danger" style="width:100%;margin-bottom:8px" onclick="window.location.href='tel:+541152889290'">📞 Llamar Recupero</button>
+    <button class="btn-ok" style="width:100%;margin-bottom:8px" onclick="window.open('https://wa.me/1130697389','_blank')">💬 WhatsApp Propietario</button>
+    <button class="btn-secondary" style="width:100%" onclick="window.open('https://wa.me/1170091012','_blank')">💬 WhatsApp Propietario</button>
+    <button class="btn-secondary" style="width:100%;margin-top:10px" onclick="closeSOS()">Cerrar</button>
+  </div>
+</div>
+
+<script>
+/* ====== SISTEMA BASE COMPLETO ====== */
+const users={
+  admin:{password:"1234",role:"ADMIN",nombre:"Administrador"},
+  usuario:{password:"1234",role:"USUARIO",nombre:"Conductor"}
+};
+
+let currentUser=null;
+
+function login(){
+  const u=loginUser.value.trim();
+  const p=loginPass.value;
+  if(!users[u]||users[u].password!==p){
+    alert("Usuario o contraseña incorrectos");
+    return;
+  }
+  currentUser=u;
+  loginBox.classList.add("hidden");
+  panel.classList.remove("hidden");
+  rolePill.textContent=users[u].role;
+  panelSubtitle.textContent="Usuario: "+u;
+
+  if(users[u].role==="ADMIN"){
+    adminPanel.classList.remove("hidden");
+    userPanel.classList.add("hidden");
+  }else{
+    userPanel.classList.remove("hidden");
+    adminPanel.classList.add("hidden");
+    sosBtn.classList.remove("hidden");
+    userHello.textContent="Hola "+users[u].nombre;
+    userEstado.innerHTML="<span class='ok'>AL DÍA</span>";
+  }
+}
+
+function logout(){location.reload();}
+function showUserTab(){}
+function showAdminTab(){}
+function openSOS(){sosOverlay.style.display="flex";}
+function closeSOS(){sosOverlay.style.display="none";}
+</script>
+
+</body>
+</html>
